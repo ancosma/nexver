@@ -1,0 +1,102 @@
+name: nexver
+
+description: |
+  Detect current version of a package and calculate next one.
+  Supports monorepo and uses templates for detection of version and output.
+  It supports conventional commits or manual control of version increments.
+
+inputs:
+  input:
+    default: git-tag
+    required: false
+    description: From where to read the version
+  input-template:
+    default: v{version}
+    required: false
+    description: Template used to detect the version
+  input-branch:
+    default: main
+    required: false
+    description: Branch used to detect version from (tags on the branch)
+  output-template:
+    default: v{version}
+    required: false
+    description: Template used to write next version out
+  major:
+    default: "false"
+    required: false
+    description: Manually increment major part
+  minor:
+    default: "false"
+    required: false
+    description: Manually increment minor part
+  patch:
+    default: "false"
+    required: false
+    description: Manually increment patch part
+  conventional-commits:
+    default: "true"
+    required: false
+    description: Detect version using conventional commits
+  vars:
+    default: ""
+    required: false
+    description: "Pass extra variables to be used in output template (ex.: build=b1)"
+  working-directory:
+    default: "."
+    required: false
+    description: Package location - used to detect changes within that directory (and its children)
+
+outputs:
+  output:
+    description: Next version output
+    value: ${{ steps.next-version.outputs.output }}
+
+runs:
+  using: composite
+  steps:
+    - name: NexVer cache
+      uses: actions/cache@v3
+      id: cache-nexver
+      env:
+        NEXVER_VERSION: "0.1.0"
+      with:
+        path: |
+          ~/.local/bin/nexver-${{ env.NEXVER_VERSION }}
+        key: ${{ runner.os }}-nexver-${{ env.NEXVER_VERSION }}
+        restore-keys: |
+          ${{ runner.os }}-nexver-
+
+    - name: Install NexVer
+      if: steps.cache-nexver.outputs.cache-hit != 'true'
+      env:
+        NEXVER_VERSION: "0.1.0"
+      shell: bash
+      run: ./scripts/nexver-install
+
+    - name: Run detection
+      id: next-version
+      env:
+        NEXVER_VERSION: "0.1.0"
+      shell: bash
+      run: |
+        set -eux
+        test '${{ inputs.vars }}' != '' && vars="--set $(echo '${{ inputs.vars }}' | sed 's|,| --set |g' -)"
+        test '${{ inputs.major }}' = 'true' && printf -v major '%q' '--major'
+        test '${{ inputs.minor }}' = 'true' && printf -v minor '%q' '--minor'
+        test '${{ inputs.patch }}' = 'true' && printf -v patch '%q' '--patch'
+        test '${{ inputs.conventional-commits }}' = 'true' && printf -v con_com '%q' '--conventional-commits'
+
+        output="$(nexver-${{ env.NEXVER_VERSION }} \
+          ${major:-} \
+          ${minor:-} \
+          ${patch:-} \
+          ${con_com:-} \
+          ${vars:-} \
+          --input '${{ inputs.input }}' \
+          --input-template '${{ inputs.input-template }}' \
+          --input-branch '${{ inputs.input-branch }}' \
+          --output-template '${{ inputs.output-template }}' \
+          '${{ inputs.working-directory }}')"
+
+        echo "output=$output" >> $GITHUB_OUTPUT

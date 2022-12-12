@@ -24,17 +24,17 @@ Options:
   -V, --version                            Print version information
 ```
 
-| Parameter                | Value                               | Default            | Description |
-| ------------------------ | ------------------------------------| ------------------ | ----------- |
-| `--input`                | git-tag (default)                   | :heavy_check_mark: | Read version from git tag |
-| `--input-template`       | 'v{version}' (default)              | :heavy_check_mark: | Template used to parse the version from tag. When not specified, it is same as --output-template |
-| `--input-branch`         | 'main' (default)                    | :heavy_check_mark: | (WIP) Used to read tags from or files with version |
-| `--set`                  | key=val                             |                    | Set variables which can be used in output template |
-| `--output-template`      | 'v{version}' (default)              | :heavy_check_mark: | Template used to render output |
-| `--conventional-commits` | (default)                           | :heavy_check_mark: | (WIP) Parse commits to find next version increment |
-| `--major`                |                                     |                    | Increment major by 1 and reset minor and patch to 0 |
-| `--minor`                |                                     |                    | Increment minor by 1 and reset patch to 0 |
-| `--patch`                |                                     |                    | Increment patch by 1 |
+| Parameter                | Value        | Default            | Description |
+| ------------------------ | -------------| ------------------ | ----------- |
+| `--input`                | git-tag      | :heavy_check_mark: | Read version from git tag |
+| `--input-template`       | 'v{version}' | :heavy_check_mark: | Template used to parse the version from tag. When not specified, it is same as --output-template |
+| `--input-branch`         | 'main'       | :heavy_check_mark: | (WIP) Used to read tags from or files with version |
+| `--set`                  | key=val      |                    | Set variables which can be used in output template |
+| `--output-template`      | 'v{version}' | :heavy_check_mark: | Template used to render output |
+| `--conventional-commits` |              | :heavy_check_mark: | (WIP) Parse commits to find next version increment |
+| `--major`                |              |                    | Increment major by 1 and reset minor and patch to 0 |
+| `--minor`                |              |                    | Increment minor by 1 and reset patch to 0 |
+| `--patch`                |              |                    | Increment patch by 1 |
 
 For single package per repository add some initial tag to ex. v0.0.1 and run simply `nexver`.
 

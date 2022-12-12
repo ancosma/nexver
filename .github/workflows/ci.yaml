@@ -3,8 +3,12 @@ name: CI
 on:
   push:
     branches: ["main"]
+    paths:
+      - "src/**"
+      - "Cargo.*"
   pull_request:
     branches: ["main"]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always

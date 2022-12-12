@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+
+set -eu
+
+if [ $# -eq 0 ]; then
+    echo "Missing target argument."
+    exit 1
+fi
+
+target="$1"
+
+cross build --release --target "${target}"
+
+arch="$(echo "${target}" | cut -d'-' -f1 -)"
+sys="$(echo "${target}" | cut -d'-' -f3 -)"
+archive="nexver-${sys}-${arch}.zip"
+binary="nexver"
+test "${sys}" = "windows" && binary="${binary}.exe"
+
+target_directory="target/${target}"
+mkdir -p "${target_directory}/nexver/"
+cp "${target_directory}/release/${binary}" LICENSE README.md "${target_directory}/nexver/"
+
+cd "${target_directory}" || exit 1
+strip "nexver/${binary}" || true
+
+zip -r "${archive}" "nexver/"
+
+echo "Artifact: ${target_directory}/${archive}"

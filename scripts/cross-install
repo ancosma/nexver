@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+version=${CROSS_VERSION:-0.2.4}
+
+rustup default stable
+cargo install --version "${version}" cross

@@ -1,0 +1,30 @@
+#!/usr/bin/env sh
+
+set -eu
+
+version=${NEXVER_VERSION:-0.1.0}
+downloads_url=${NEXVER_DOWNLOADS_URL:-https://github.com/ancosma/nexver/releases/download/}
+binary="nexver"
+
+if command -v "${binary}" > /dev/null 2>&1; then
+    current_version="$(${binary} --version | cut -d' ' -f2 -)"
+    if [ "${current_version}" = "${version}" ]; then
+        echo "skipping ... ${binary} is already installed"
+        exit 0
+    fi
+fi
+
+arch="$(uname -m)"
+sys="$(uname -s | tr '[:upper:]' '[:lower:]')"
+binary_v="${binary}-${version}"
+path="$HOME/.local/bin"
+
+mkdir -p "${path}"
+cd "${path}" || exit 1
+
+curl -Lo "${binary_v}.zip" "${downloads_url}v${version}/${binary}-${sys}-${arch}.zip"
+unzip -o "${binary_v}" && rm -f "${binary_v}.zip"
+mv "nexver/${binary}" "${binary_v}"
+rm -r "nexver/"
+chmod ugo+x "${binary_v}"
+ln -sf "${binary_v}" "${binary}"

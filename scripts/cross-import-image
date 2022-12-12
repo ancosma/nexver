@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+
+set -eu
+
+if [ $# -eq 0 ]; then
+    echo "Missing target argument."
+    exit 1
+fi
+
+target="$1"
+tool="${CROSS_OCI_TOOL:-docker}"
+cross_version="$(cross-util --version | cut -d' ' -f2 -)"
+directory="${CROSS_EXPORT_DIRECTORY:-$HOME/.local/share/cross/exports}"
+
+file="${directory}/${target}-${cross_version}"
+if [ ! -f "${file}" ]; then
+    echo "Import ${target}-${cross_version} not found in ${directory}"
+    exit 1
+fi
+
+$tool image load --input "${file}"

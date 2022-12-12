@@ -1,0 +1,52 @@
+#!/usr/bin/env sh
+
+set -eu
+
+version=${GHR_VERSION:-0.16.0}
+downloads_url=${GHR_DOWNLOADS_URL:-https://github.com/tcnksm/ghr/releases/download/}
+binary="ghr"
+
+if command -v "${binary}" > /dev/null 2>&1; then
+    current_version="$(${binary} --version | cut -d' ' -f3 -)"
+    if [ "${current_version}" = "v${version}" ]; then
+        echo "skipping ... ${binary} is already installed"
+        exit 0
+    fi
+fi
+
+arch="$(uname -m)"
+test "${arch}" = "x86_64" && arch="amd64"
+
+binary_v="${binary}-${version}"
+path="$HOME/.local/bin"
+
+sys="$(uname -s | tr '[:upper:]' '[:lower:]')"
+case "${sys}" in
+    freebsd | linux)
+    extension="tar.gz"
+    ;;
+    windows)
+    echo "Platform not supported"
+    exit 1
+    ;;
+    *)
+    extension="zip"
+    ;;
+esac
+
+mkdir -p "${path}"
+cd "${path}" || exit 1
+
+file_name="${binary}_v${version}_${sys}_${arch}"
+archive="${file_name}.${extension}"
+curl -Lo "${archive}" "${downloads_url}v${version}/${archive}"
+
+test "${extension}" = "tar.gz" && tar xvzf "${archive}"
+test "${extension}" = "zip" && unzip -o "${archive}"
+
+mv "./${file_name}/${binary}" "${binary_v}"
+chmod ugo+x "${binary_v}"
+ln -sf "${binary_v}" "${binary}"
+
+rm -f "${archive}"
+rm -rf "./${file_name}/"

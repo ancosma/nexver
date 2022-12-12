@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+
+if [ $# -eq 0 ]; then
+    echo "Missing target argument."
+    exit 1
+fi
+
+target="$1"
+tool="${CROSS_OCI_TOOL:-docker}"
+registry="${CROSS_REGISTRY:-ghcr.io/cross-rs}"
+cross_version="$(cross-util --version | cut -d' ' -f2 -)"
+directory="${CROSS_EXPORT_DIRECTORY:-$HOME/.local/share/cross/exports}"
+
+file="${directory}/${target}-${cross_version}"
+if [ ! -f "${file}" ]; then
+    mkdir -p "${directory}"
+    $tool pull "${registry}/${target}:${cross_version}"
+    $tool image save "${registry}/${target}:${cross_version}" --output "${file}"
+fi

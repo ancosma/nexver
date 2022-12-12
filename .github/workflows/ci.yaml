@@ -79,6 +79,8 @@ jobs:
           tag='${{ needs.next-version.outputs.tag }}'
           toml set --toml-path Cargo.toml package.version "${tag#v}"
 
+          git config --global user.email "ci@intersect.ro"
+          git config --global user.name "CI"
           git pull
           git add Cargo.toml && git commit -m "ci: Version patch" && git push origin main || true
 
@@ -118,7 +120,7 @@ jobs:
         id: setup
         run: |
           ./scripts/ghr-install
-          ./scrips/cross-install
+          ./scripts/cross-install
 
           echo "cross_version=$(cross-util --version | cut -d' ' -f2 -)" >> $GITHUB_OUTPUT
 

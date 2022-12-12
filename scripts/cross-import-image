@@ -14,8 +14,8 @@ directory="${CROSS_EXPORT_DIRECTORY:-$HOME/.local/share/cross/exports}"
 
 file="${directory}/${target}-${cross_version}"
 if [ ! -f "${file}" ]; then
-    echo "Import ${target}-${cross_version} not found in ${directory}"
-    exit 1
+    echo "Import ${target}-${cross_version} not found in ${directory}. Import skipped."
+    exit 0
 fi
 
 $tool image load --input "${file}"

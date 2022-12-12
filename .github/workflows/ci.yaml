@@ -79,10 +79,10 @@ jobs:
           tag='${{ needs.next-version.outputs.tag }}'
           toml set --toml-path Cargo.toml package.version "${tag#v}"
 
-          git config --global user.email "ci@intersect.ro"
+          git config --global user.email "andrei@intersect.ro"
           git config --global user.name "CI"
           git pull
-          git add Cargo.toml && git commit -m "ci: Version patch" || true
+          git add Cargo.toml && git commit -m "ci: Patch version" || true
           git push origin main
 
   build-and-publish:

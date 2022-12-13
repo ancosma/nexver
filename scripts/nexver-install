@@ -20,11 +20,10 @@ binary_v="${binary}-${version}"
 path="$HOME/.local/bin"
 
 mkdir -p "${path}"
-cd "${path}" || exit 1
 
 curl -Lo "${binary_v}.zip" "${downloads_url}v${version}/${binary}-${sys}-${arch}.zip"
 unzip -o "${binary_v}" && rm -f "${binary_v}.zip"
-mv "nexver/${binary}" "${binary_v}"
+mv "nexver/${binary}" "${path}/${binary_v}"
 rm -r "nexver/"
-chmod ugo+x "${binary_v}"
-ln -sf "${binary_v}" "${binary}"
+chmod ugo+x "${path}/${binary_v}"
+cd "${path}" && ln -sf "${binary_v}" "${binary}"

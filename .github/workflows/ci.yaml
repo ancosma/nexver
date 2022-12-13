@@ -86,6 +86,10 @@ jobs:
           tag='${{ needs.next-version.outputs.tag }}'
           toml set --toml-path Cargo.toml package.version "${tag#v}"
 
+          cargo update --offline
+
+          sed -i -- 's|NEXVER_VERSION:.*$|NEXVER_VERSION: "'${tag#v}'"|g' action.yaml
+
           git config --global user.email "andrei@intersect.ro"
           git config --global user.name "CI"
           git pull

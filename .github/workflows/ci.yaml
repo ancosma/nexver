@@ -93,7 +93,7 @@ jobs:
           git config --global user.email "andrei@intersect.ro"
           git config --global user.name "CI"
           git pull
-          git add Cargo.toml action.yaml && git commit -m "ci: Patch version" || true
+          git add Cargo.toml Cargo.lock action.yaml && git commit -m "ci: Patch version" || true
           git push origin main
 
   build-and-publish:

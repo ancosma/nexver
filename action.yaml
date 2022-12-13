@@ -59,7 +59,7 @@ runs:
       uses: actions/cache@v3
       id: cache-nexver
       env:
-        NEXVER_VERSION: "0.4.0"
+        NEXVER_VERSION: "0.5.0"
       with:
         path: |
           ~/.local/bin/nexver-${{ env.NEXVER_VERSION }}
@@ -70,14 +70,14 @@ runs:
     - name: Install NexVer
       if: steps.cache-nexver.outputs.cache-hit != 'true'
       env:
-        NEXVER_VERSION: "0.4.0"
+        NEXVER_VERSION: "0.5.0"
       shell: bash
       run: ${GITHUB_ACTION_PATH}/scripts/nexver-install
 
     - name: Run detection
       id: next-version
       env:
-        NEXVER_VERSION: "0.4.0"
+        NEXVER_VERSION: "0.5.0"
       shell: bash
       run: |
         set -eu

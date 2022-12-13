@@ -140,8 +140,8 @@ jobs:
         uses: actions/cache@v3
         id: cross-cache
         with:
-          path: ~/.cross/images/${{ matrix.target }}-${{ steps.setup.outputs.cross_version }}
-          key: ${{ runner.os }}-cross-${{ steps.setup.outputs.cross_version }}
+          path: ~/.local/share/cross/exports/${{ matrix.target }}-${{ steps.setup.outputs.cross_version }}
+          key: ${{ runner.os }}-cross-${{ matrix.target }}-${{ steps.setup.outputs.cross_version }}
 
       - name: Restore ${{ matrix.target }} cross image
         run: ./scripts/cross-import-image ${{ matrix.target }}

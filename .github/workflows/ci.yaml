@@ -8,6 +8,9 @@ on:
       - "Cargo.*"
   pull_request:
     branches: ["main"]
+    paths:
+      - "src/**"
+      - "Cargo.*"
   workflow_dispatch:
 
 env:

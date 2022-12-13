@@ -80,13 +80,14 @@ runs:
         NEXVER_VERSION: "0.4.0"
       shell: bash
       run: |
-        set -eux
+        set -eu
         test '${{ inputs.vars }}' != '' && vars="--set $(echo '${{ inputs.vars }}' | sed 's|,| --set |g' -)"
         test '${{ inputs.major }}' = 'true' && printf -v major '%q' '--major'
         test '${{ inputs.minor }}' = 'true' && printf -v minor '%q' '--minor'
         test '${{ inputs.patch }}' = 'true' && printf -v patch '%q' '--patch'
         test '${{ inputs.conventional-commits }}' = 'true' && printf -v con_com '%q' '--conventional-commits'
 
+        export PATH="$HOME/.local/bin:$PATH"
         output="$(nexver-${{ env.NEXVER_VERSION }} \
           ${major:-} \
           ${minor:-} \

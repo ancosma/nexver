@@ -72,7 +72,7 @@ runs:
       env:
         NEXVER_VERSION: "0.4.0"
       shell: bash
-      run: ./scripts/nexver-install
+      run: ${GITHUB_ACTION_PATH}/scripts/nexver-install
 
     - name: Run detection
       id: next-version

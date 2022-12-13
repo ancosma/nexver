@@ -86,7 +86,7 @@ jobs:
           tag='${{ needs.next-version.outputs.tag }}'
           toml set --toml-path Cargo.toml package.version "${tag#v}"
 
-          cargo update --offline
+          cargo update
 
           sed -i -- 's|NEXVER_VERSION:.*$|NEXVER_VERSION: "'${tag#v}'"|g' action.yaml
 

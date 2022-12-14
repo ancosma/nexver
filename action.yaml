@@ -100,4 +100,8 @@ runs:
           --output-template '${{ inputs.output-template }}' \
           '${{ inputs.working-directory }}')"
 
-        echo "output=$output" >> $GITHUB_OUTPUT
+        if [ "${GITHUB_OUTPUT:-dummy}" != "dummy" ]; then
+          echo "output=$output" >> $GITHUB_OUTPUT
+        else
+          echo "::set-output name=output::${output}"
+        fi

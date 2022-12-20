@@ -157,6 +157,7 @@ fn increment_version(version: &mut Version, args: &Args) {
 fn increment_conventional_version(version: &mut Version) {
     info!("Increment version using conventional commits");
     // TODO: increment version based on conventional commits
+    version.patch = 0;
     version.minor += 1;
 }
 

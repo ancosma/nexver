@@ -2,7 +2,7 @@
 
 set -eu
 
-version=${NEXVER_VERSION:-0.1.0}
+version=${NEXVER_VERSION:-1.0.0}
 downloads_url=${NEXVER_DOWNLOADS_URL:-https://github.com/ancosma/nexver/releases/download/}
 binary="nexver"
 

@@ -11,32 +11,19 @@ Arguments:
   [PATH]  [default: .]
 
 Options:
-      --input <INPUT>                      [default: git-tag]
+      --base-ref <BASE_REF>                [default: main]
+      --head-ref <HEAD_REF>                [default: main^]
       --input-template <INPUT_TEMPLATE>    [default: ]
-      --input-branch <INPUT_BRANCH>        [default: main]
       --output-template <OUTPUT_TEMPLATE>  [default: v{version}]
-      --major
-      --minor
-      --patch
-  -c, --conventional-commits
       --set <VARS>
-  -h, --help                               Print help information
-  -V, --version                            Print version information
+      --major-types <MAJOR_TYPES>...
+      --minor-types <MINOR_TYPES>...       [default: feat]
+      --patch-types <PATCH_TYPES>...       [default: fix]
+  -h, --help                               Print help
+  -V, --version                            Print version
 ```
 
-| Parameter                | Value        | Default            | Description |
-| ------------------------ | -------------| ------------------ | ----------- |
-| `--input`                | git-tag      | :heavy_check_mark: | Read version from git tag |
-| `--input-template`       | 'v{version}' | :heavy_check_mark: | Template used to parse the version from tag. When not specified, it is same as --output-template |
-| `--input-branch`         | 'main'       | :heavy_check_mark: | (WIP) Used to read tags from or files with version |
-| `--set`                  | key=val      |                    | Set variables which can be used in output template |
-| `--output-template`      | 'v{version}' | :heavy_check_mark: | Template used to render output |
-| `--conventional-commits` |              | :heavy_check_mark: | (WIP) Parse commits to find next version increment |
-| `--major`                |              |                    | Increment major by 1 and reset minor and patch to 0 |
-| `--minor`                |              |                    | Increment minor by 1 and reset patch to 0 |
-| `--patch`                |              |                    | Increment patch by 1 |
-
-For single package per repository add some initial tag to ex. v0.0.1 and run simply `nexver`.
+For single package per repository add some initial tag to repository (ex. v0.0.1) and run simply `nexver`.
 
 For monorepo run it with path as part of template `nexver --output-template '{path[-1]}-v{version}'` - it will prefix package directory name to the output.
 

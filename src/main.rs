@@ -107,6 +107,7 @@ fn render_template(template: &str, vars: &Vec<(String, String)>) -> String {
 
 fn add_path_to_vars(path: &PathBuf, vars: &mut Vec<(String, String)>) {
     info!("Add path {} to vars list", path.to_str().unwrap());
+
     // TODO: stop adding component when in the root of git directory (to not expose the rest of the path)?
     let max = path.components().count() - 1;
     let mut crt = 0;

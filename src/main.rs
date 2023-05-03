@@ -1,42 +1,39 @@
 use clap::Parser;
+use core::panic;
 use git2::Repository;
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use regex::Regex;
 use semver::Version;
 use std::error::Error;
-use std::fs;
 use std::path::{Component, PathBuf};
-
+extern crate git_conventional;
 const DEFAULT_TEMPLATE: &'static str = "v{version}";
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    #[arg(long, default_value = "git-tag")]
-    input: String,
+    #[arg(long, default_value = "main")]
+    base_ref: String,
+
+    #[arg(long, default_value = "main^")]
+    head_ref: String,
 
     #[arg(long, default_value = "")]
     input_template: String,
 
-    #[arg(long, default_value = "main")]
-    input_branch: String,
-
     #[arg(long, default_value = DEFAULT_TEMPLATE)]
     output_template: String,
 
-    #[arg(long, default_value_t = false)]
-    major: bool,
-
-    #[arg(long, default_value_t = false)]
-    minor: bool,
-
-    #[arg(long, default_value_t = false)]
-    patch: bool,
-
-    #[arg(short, long, default_value_t = true)]
-    conventional_commits: bool,
-
     #[arg(long = "set", value_parser = parse_key_val::<String, String>)]
     vars: Vec<(String, String)>,
+
+    #[arg(long, value_parser, num_args=1.., value_delimiter=',')]
+    major_types: Vec<String>,
+
+    #[arg(long, default_value = "feat", value_parser, num_args=1.., value_delimiter=',')]
+    minor_types: Vec<String>,
+
+    #[arg(long, default_value = "fix", value_parser, num_args=1.., value_delimiter=',')]
+    patch_types: Vec<String>,
 
     #[arg(default_value = ".")]
     path: PathBuf,
@@ -58,18 +55,7 @@ where
 const SEMVER_RES: &'static str = r"((0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))";
 const VARS_RES: &'static str = r"\{.*?\}";
 
-fn get_version_from_git(
-    path: &PathBuf,
-    template: &str,
-    _branch: &str,
-    vars: &Vec<(String, String)>,
-) -> String {
-    // TODO: branch based tag? Make sure that tags (commits) exists on the specified branch.
-    let repo = match Repository::discover(path) {
-        Ok(repo) => repo,
-        Err(e) => panic!("Failed to open {}", e),
-    };
-
+fn get_version_from_git(repo: &Repository, template: &str, vars: &Vec<(String, String)>) -> String {
     let mut version = Version::parse("0.0.0").unwrap();
 
     let vars_regex = Regex::new(VARS_RES).unwrap();
@@ -135,37 +121,64 @@ fn add_path_to_vars(path: &PathBuf, vars: &mut Vec<(String, String)>) {
     }
 }
 
-fn increment_version(version: &mut Version, args: &Args) {
-    if args.major {
-        version.major += 1;
-        version.minor = 0;
-        version.patch = 0;
-    }
-    if args.minor {
-        version.minor += 1;
-        version.patch = 0;
-    }
-    if args.patch {
-        version.patch += 1;
-    }
+fn increment_version(version: &mut Version, args: &Args, repo: &Repository) {
+    let mut major = false;
+    let mut minor = false;
+    let mut patch = false;
 
-    if args.conventional_commits {
-        increment_conventional_version(version);
+    let mut rw = repo.revwalk().expect("Failed to walk git commits.");
+    rw.push_range(format!("{}..{}", &args.head_ref, &args.base_ref).as_str())
+        .expect("Checking commits failed.");
+    for commit in rw {
+        let c: Result<git2::Commit, git2::Error> = match commit {
+            Ok(oid) => repo.find_commit(oid),
+            Err(err) => {
+                panic!("{}", err);
+            }
+        };
+        let git_commit = c.unwrap();
+        let message = git_commit.message().unwrap();
+        // TODO: check if commit changes are at current specified path
+        match git_conventional::Commit::parse(&message) {
+            Ok(info) => {
+                if info.breaking() || args.major_types.contains(&info.type_().to_string()) {
+                    major = true;
+                    info!("{} commit contains a breaking change.", git_commit.id());
+                    break;
+                }
+                if args.minor_types.contains(&info.type_().to_string()) {
+                    minor = true;
+                }
+                if args.patch_types.contains(&info.type_().to_string()) {
+                    patch = true;
+                }
+            }
+            Err(_e) => {}
+        }
     }
-}
-
-fn increment_conventional_version(version: &mut Version) {
-    info!("Increment version using conventional commits");
-    // TODO: increment version based on conventional commits
-    version.patch = 0;
-    version.minor += 1;
+    let (major, minor, patch) = (major, minor, patch);
+    match (major, minor, patch) {
+        (true, _, _) => {
+            version.major += 1;
+            version.minor = 0;
+            version.patch = 0;
+        }
+        (_, true, _) => {
+            version.minor += 1;
+            version.patch = 0;
+        }
+        (_, _, true) => {
+            version.patch += 1;
+        }
+        _ => {}
+    }
 }
 
 fn normalize_inputs(args: &mut Args) {
-    args.path = match fs::canonicalize(&args.path) {
+    args.path = match args.path.canonicalize() {
         Ok(path) => path,
         Err(e) => {
-            println!("Error: {}", e);
+            error!("Error: {}", e);
             std::process::exit(1)
         }
     };
@@ -177,11 +190,6 @@ fn normalize_inputs(args: &mut Args) {
         );
         args.input_template = args.output_template.clone();
     }
-
-    if args.major || args.minor || args.patch {
-        info!("Major/minor/patch provided. Disabling conventional commits check.");
-        args.conventional_commits = false;
-    }
 }
 
 fn main() {
@@ -190,24 +198,16 @@ fn main() {
     let mut args = Args::parse();
     normalize_inputs(&mut args);
     add_path_to_vars(&args.path, &mut args.vars);
-
-    let version = match args.input.as_ref() {
-        "git-tag" => get_version_from_git(
-            &args.path,
-            &args.input_template,
-            &args.input_branch,
-            &args.vars,
-        ),
-        // TODO: toml, ini
-        _ => {
-            println!("Unsupported option for --input: {}", &args.input);
-            std::process::exit(1)
-        }
+    let repo = match Repository::discover(&args.path) {
+        Ok(repo) => repo,
+        Err(e) => panic!("Failed to open {}", e),
     };
+
+    let version = get_version_from_git(&repo, &args.input_template, &args.vars);
 
     let mut version = Version::parse(version.as_ref()).unwrap();
 
-    increment_version(&mut version, &args);
+    increment_version(&mut version, &args, &repo);
 
     info!("Next version: {}", version);
     args.vars

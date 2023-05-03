@@ -50,46 +50,41 @@ To get version and tag in same output, add it to template as in `--output-templa
 ```yaml
 - uses: ancosma/nexver@main
   with:
-    # From where to read the version
-    # default: git-tag
-    input: ''
+    # Git base ref
+    # default: main
+    base-ref: ''
+
+    # Git head ref
+    # default: main^
+    head-ref: ''
 
     # Template used to detect the version
     # default: v{version}
     input-template: ''
 
-    # Branch used to detect version from (tags on the branch)
-    # default: main
-    input-branch: ''
-
     # Template used to write next version out
     # default: v{version}
     output-template: ''
 
-    # Manually increment major part
-    # default: 'false'
-    major: ''
+    # Define types which increment major number
+    # default: ''
+    major-types: ''
 
-    # Manually increment minor part
-    # default: 'false'
-    minor: ''
+    # Define types which increment minor number (ex: feat,chore)
+    # default: 'feat'
+    minor-types: ''
 
-    # Manually increment patch part
-    # default: 'false'
-    patch: ''
+    # Define types which increment patch number (ex: fix,docs)
+    # default: 'fix'
+    patch-types: ''
 
-    # Detect version using conventional commits
-    # default: 'true'
-    conventional-commits: ''
-
-    # Pass extra variables to be used in output template (ex.: build=b1)
+    # Pass extra variables to be used in output template (ex: build=b1,info=something)
     # default: ''
     vars: ''
 
     # Package location - used to detect changes within that directory (and its children)
     # default: '.'
     working-directory: ''
-
 ```
 
 Output: `output` - render the output-template in it.

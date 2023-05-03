@@ -1,47 +1,51 @@
 name: nexver
 
 description: |
-  Detect current version of a package and calculate next one.
+  Detect current version of a package and calculate the next one.
   Supports monorepo and uses templates for detection of version and output.
-  It supports conventional commits or manual control of version increments.
+  It supports (configurable) conventional commits.
 
 inputs:
-  input:
-    default: git-tag
+  base-ref:
+    default: ""
     required: false
-    description: From where to read the version
+    description: Base ref. Default is 'main'.
+  head-ref:
+    default: ""
+    required: false
+    description: Head ref. Default is 'main^'.
   input-template:
-    default: v{version}
+    default: "v{version}"
     required: false
     description: Template used to detect the version
-  input-branch:
-    default: main
-    required: false
-    description: Branch used to detect version from (tags on the branch)
   output-template:
-    default: v{version}
+    default: "v{version}"
     required: false
     description: Template used to write next version out
-  major:
-    default: "false"
+  major-types:
+    default: ""
     required: false
-    description: Manually increment major part
-  minor:
-    default: "false"
+    description: |
+      Define types which increment major number. By default, all types which ends with '!'
+      or commits containing 'BREAKING CHANGE' or 'BREAKING-CHANGE' in commit message body 
+      define a breaking change. Types added here will extend the default behavior.
+  minor-types:
+    default: ""
     required: false
-    description: Manually increment minor part
-  patch:
-    default: "false"
+    description: |
+      Define types which increment minor number. Default is 'feat'.
+      Types can be comma separated (no space). Provided types overwrite the default.
+  patch-types:
+    default: ""
     required: false
-    description: Manually increment patch part
-  conventional-commits:
-    default: "true"
-    required: false
-    description: Detect version using conventional commits
+    description: |
+      Define types which increment patch number. Default is 'fix'.
+      Types can be comma separated (no space). Provided types overwrite the default.
   vars:
     default: ""
     required: false
-    description: "Pass extra variables to be used in output template (ex.: build=b1)"
+    description: |
+      Pass extra variables to be used in output template (ex.: build=b1,info=something)
   working-directory:
     default: "."
     required: false
@@ -72,36 +76,20 @@ runs:
       env:
         NEXVER_VERSION: "0.7.0"
       shell: bash
-      run: ${GITHUB_ACTION_PATH}/scripts/nexver-install
+      run: ${{ github.action_path }}/scripts/nexver-install
 
     - name: Run detection
       id: next-version
       env:
         NEXVER_VERSION: "0.7.0"
+        BASE_REF: ${{ inputs.base-ref }}
+        HEAD_REF: ${{ inputs.head-ref }}
+        INPUT_TEMPLATE: ${{ inputs.input-template }}
+        MAJOR_TYPES: ${{ inputs.major-types }}
+        MINOR_TYPES: ${{ inputs.minor-types }}
+        OUTPUT_TEMPLATE: ${{ inputs.output-template }}
+        PATCH_TYPES: ${{ inputs.patch-types }}
+        VARS: ${{ inputs.vars }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
       shell: bash
-      run: |
-        set -eu
-        test '${{ inputs.vars }}' != '' && vars="--set $(echo '${{ inputs.vars }}' | sed 's|,| --set |g' -)"
-        test '${{ inputs.major }}' = 'true' && printf -v major '%q' '--major'
-        test '${{ inputs.minor }}' = 'true' && printf -v minor '%q' '--minor'
-        test '${{ inputs.patch }}' = 'true' && printf -v patch '%q' '--patch'
-        test '${{ inputs.conventional-commits }}' = 'true' && printf -v con_com '%q' '--conventional-commits'
-
-        export PATH="$HOME/.local/bin:$PATH"
-        output="$(nexver-${{ env.NEXVER_VERSION }} \
-          ${major:-} \
-          ${minor:-} \
-          ${patch:-} \
-          ${con_com:-} \
-          ${vars:-} \
-          --input '${{ inputs.input }}' \
-          --input-template '${{ inputs.input-template }}' \
-          --input-branch '${{ inputs.input-branch }}' \
-          --output-template '${{ inputs.output-template }}' \
-          '${{ inputs.working-directory }}')"
-
-        if [ "${GITHUB_OUTPUT:-dummy}" != "dummy" ]; then
-          echo "output=$output" >> $GITHUB_OUTPUT
-        else
-          echo "::set-output name=output::${output}"
-        fi
+      run: ${{ github.action_path }}/scripts/run-detection

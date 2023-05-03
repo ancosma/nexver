@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+
+set -eu
+
+: "${GITHUB_OUTPUT:?not defined}"
+
+export PATH="${HOME}/.local/bin:${PATH}"
+
+if [ "${NEXVER_VERSION:-}" != "" ]; then
+    WITH_VERSION="-${NEXVER_VERSION}"
+fi
+
+call_nexver() {
+    test "${BASE_REF:-}" != "" && set -- --base-ref "${BASE_REF}" "$@"
+    test "${HEAD_REF:-}" != "" && set -- --head-ref "${HEAD_REF}" "$@"
+    test "${MAJOR_TYPES:-}" != "" && set -- --major-types "${MAJOR_TYPES}" "$@"
+    test "${MINOR_TYPES:-}" != "" && set -- --minor-types "${MINOR_TYPES}" "$@"
+    test "${PATCH_TYPES:-}" != "" && set -- --patch-types "${PATCH_TYPES}" "$@"
+    test "${VARS:-}" != "" &&  for entry in $(echo "${VARS}" | tr ',' "\n"); do set -- --set "${entry}" "$@"; done
+    test "${INPUT_TEMPLATE:-}" != "" && set -- --input-template "${INPUT_TEMPLATE}" "$@"
+    test "${OUTPUT_TEMPLATE:-}" != "" && set -- --output-template "${OUTPUT_TEMPLATE}" "$@"
+
+    "nexver${WITH_VERSION:-}" "$@"
+}
+
+output="$(call_nexver "${WORKING_DIRECTORY:-.}")"
+
+echo "output=$output" >>"${GITHUB_OUTPUT}"

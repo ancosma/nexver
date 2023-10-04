@@ -10,10 +10,10 @@ categories = ["command-line-interface", "config", "development-tools"]
 
 
 [dependencies]
-clap = { version = "4.0.29", features = ["derive"] }
+clap = { version = "4.4.6", features = ["derive"] }
 env_logger = "0.10.0"
-git-conventional = "0.12.3"
-git2 = { version = "0.15.0", features = ["vendored-libgit2", "vendored-openssl"]}
-log = "0.4.17"
-regex = "1.7.0"
-semver = "1.0.14"
+git-conventional = "0.12.4"
+git2 = { version = "0.18.1", features = ["vendored-libgit2", "vendored-openssl"]}
+log = "0.4.20"
+regex = "1.9.6"
+semver = "1.0.19"

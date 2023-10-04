@@ -9,11 +9,11 @@ inputs:
   base-ref:
     default: ""
     required: false
-    description: Base ref. Default is 'main'.
+    description: Not in use. Keept for backward compatibility.
   head-ref:
     default: ""
     required: false
-    description: Head ref. Default is 'main^'.
+    description: Head ref. Default is 'HEAD'.
   input-template:
     default: "v{version}"
     required: false

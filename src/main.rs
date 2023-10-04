@@ -1,20 +1,25 @@
+#![forbid(unsafe_code)]
+
 use clap::Parser;
-use core::panic;
-use git2::Repository;
-use log::{debug, error, info, warn};
+use git2::{Oid, Repository};
+use log::{debug, info, warn};
 use regex::Regex;
 use semver::Version;
+use std::collections::HashMap;
 use std::error::Error;
-use std::path::{Component, PathBuf};
+use std::path::{Path, PathBuf};
+
 extern crate git_conventional;
+
 const DEFAULT_TEMPLATE: &'static str = "v{version}";
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    #[arg(long, default_value = "main")]
-    base_ref: String,
+    #[arg(long, default_value = "not-in-use")]
+    _base_ref: String,
 
-    #[arg(long, default_value = "main^")]
+    #[arg(long, default_value = "HEAD")]
     head_ref: String,
 
     #[arg(long, default_value = "")]
@@ -39,6 +44,46 @@ struct Args {
     path: PathBuf,
 }
 
+type Vars = HashMap<String, String>;
+
+struct Config {
+    head: String,
+
+    input: String,
+
+    output: String,
+
+    vars: Vars,
+
+    major_types: Vec<String>,
+
+    minor_types: Vec<String>,
+
+    patch_types: Vec<String>,
+
+    path: PathBuf,
+}
+
+impl TryInto<Config> for Args {
+    type Error = Box<dyn Error>;
+
+    fn try_into(self) -> Result<Config, Self::Error> {
+        Ok(Config {
+            head: self.head_ref,
+            input: if self.input_template.is_empty() {
+                self.output_template.clone()
+            } else {
+                self.input_template
+            },
+            output: self.output_template,
+            vars: self.vars.into_iter().map(|x| (x.0, x.1)).collect(),
+            major_types: self.major_types,
+            minor_types: self.minor_types,
+            patch_types: self.patch_types,
+            path: self.path.canonicalize()?,
+        })
+    }
+}
 fn parse_key_val<T, U>(s: &str) -> Result<(T, U), Box<dyn Error + Send + Sync + 'static>>
 where
     T: std::str::FromStr,
@@ -55,8 +100,8 @@ where
 const SEMVER_RES: &'static str = r"((0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))";
 const VARS_RES: &'static str = r"\{.*?\}";
 
-fn get_version_from_git(repo: &Repository, template: &str, vars: &Vec<(String, String)>) -> String {
-    let mut version = Version::parse("0.0.0").unwrap();
+fn get_version_from_git(repo: &Repository, template: &str, vars: &Vars) -> (Version, Oid, String) {
+    let mut version = Version::new(0, 0, 0);
 
     let vars_regex = Regex::new(VARS_RES).unwrap();
 
@@ -72,6 +117,8 @@ fn get_version_from_git(repo: &Repository, template: &str, vars: &Vec<(String, S
     debug!("Pattern used for tag matching: {}", tag_pattern);
     let tags = repo.tag_names(Some(&tag_pattern)).unwrap();
 
+    let mut oid = Oid::zero();
+    let mut found_tag = String::new();
     debug!("Found {} possible tags candidates.", tags.len());
     for tag in tags.iter() {
         let tag = tag.unwrap();
@@ -81,6 +128,7 @@ fn get_version_from_git(repo: &Repository, template: &str, vars: &Vec<(String, S
                 debug!("Checking tag {}", tag_version);
                 if tag_version > version {
                     version = tag_version;
+                    found_tag = tag.to_string();
                 }
             }
             None => {
@@ -88,12 +136,15 @@ fn get_version_from_git(repo: &Repository, template: &str, vars: &Vec<(String, S
             }
         }
     }
+    if let Ok(r) = repo.revparse_single(&found_tag) {
+        oid = r.id();
+    }
 
     info!("Current version: {}", version);
-    version.to_string()
+    (version, oid, found_tag)
 }
 
-fn render_template(template: &str, vars: &Vec<(String, String)>) -> String {
+fn render_template(template: &str, vars: &Vars) -> String {
     let mut output = String::from(template);
     for var in vars.iter() {
         let name = "{".to_string() + &var.0 + "}";
@@ -105,58 +156,65 @@ fn render_template(template: &str, vars: &Vec<(String, String)>) -> String {
     output
 }
 
-fn add_path_to_vars(path: &PathBuf, vars: &mut Vec<(String, String)>) {
+fn add_path_to_vars(path: &Path, vars: &mut Vars) -> Result<(), Box<dyn Error>> {
     info!("Add path {} to vars list", path.to_str().unwrap());
-
-    // TODO: stop adding component when in the root of git directory (to not expose the rest of the path)?
-    let max = path.components().count() - 1;
-    let mut crt = 0;
-    for component in path.components() {
-        if component == Component::RootDir {
-            continue;
-        }
+    for (i, component) in path.components().rev().enumerate() {
         let part = component.as_os_str().to_str().unwrap();
-        vars.push((format!("path[{}]", crt), String::from(part)));
-        vars.push((format!("path[-{}]", max - crt), String::from(part)));
-        crt += 1;
+        vars.insert(format!("path[{}]", i + 1), String::from(part));
+        vars.insert(format!("path[{}]", -1 - i as i32), String::from(part));
     }
+    Ok(())
 }
 
-fn increment_version(version: &mut Version, args: &Args, repo: &Repository) {
+fn increment_version(
+    version: &mut Version,
+    tag: &str,
+    config: &Config,
+    repo: &Repository,
+) -> Result<(), Box<dyn Error>> {
     let mut major = false;
     let mut minor = false;
     let mut patch = false;
 
     let mut rw = repo.revwalk().expect("Failed to walk git commits.");
-    rw.push_range(format!("{}..{}", &args.head_ref, &args.base_ref).as_str())
-        .expect("Checking commits failed.");
+    let head = repo.revparse_single(&config.head).unwrap().id();
+    if !tag.is_empty() {
+        let tag_id = repo.revparse_single(&tag)?.id();
+        info!("Checking commits between: {}..{}", tag_id, head);
+        rw.push_range(format!("{}..{}", tag_id, head).as_str())?;
+    } else {
+        info!("Checking commits before: {}", head);
+        rw.push(head)?;
+    }
+    let mut count = 0;
     for commit in rw {
-        let c: Result<git2::Commit, git2::Error> = match commit {
-            Ok(oid) => repo.find_commit(oid),
-            Err(err) => {
-                panic!("{}", err);
-            }
-        };
-        let git_commit = c.unwrap();
-        let message = git_commit.message().unwrap();
+        count += 1;
+        let git_commit = repo.find_commit(commit?)?;
+        let message = git_commit.message().ok_or("")?;
         // TODO: check if commit changes are at current specified path
         match git_conventional::Commit::parse(&message) {
             Ok(info) => {
-                if info.breaking() || args.major_types.contains(&info.type_().to_string()) {
+                if info.breaking() || config.major_types.contains(&info.type_().to_string()) {
                     major = true;
                     info!("{} commit contains a breaking change.", git_commit.id());
                     break;
                 }
-                if args.minor_types.contains(&info.type_().to_string()) {
+                if config.minor_types.contains(&info.type_().to_string()) {
                     minor = true;
                 }
-                if args.patch_types.contains(&info.type_().to_string()) {
+                if config.patch_types.contains(&info.type_().to_string()) {
                     patch = true;
                 }
             }
-            Err(_e) => {}
+            Err(_e) => {
+                warn!(
+                    "Skipping commit {} due to commit message error.",
+                    git_commit.id()
+                );
+            }
         }
     }
+    info!("Checked {} commits.", count);
     let (major, minor, patch) = (major, minor, patch);
     match (major, minor, patch) {
         (true, _, _) => {
@@ -173,48 +231,41 @@ fn increment_version(version: &mut Version, args: &Args, repo: &Repository) {
         }
         _ => {}
     }
+    Ok(())
 }
 
-fn normalize_inputs(args: &mut Args) {
-    args.path = match args.path.canonicalize() {
-        Ok(path) => path,
-        Err(e) => {
-            error!("Error: {}", e);
-            std::process::exit(1)
-        }
-    };
-
-    if args.input_template.is_empty() {
-        info!(
-            "Input template is empty. Filling it from output template {}",
-            args.output_template.as_str()
-        );
-        args.input_template = args.output_template.clone();
-    }
-}
-
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
+    let mut config: Config = Args::parse().try_into()?;
+    let repo = Repository::discover(&config.path)?;
 
-    let mut args = Args::parse();
-    normalize_inputs(&mut args);
-    add_path_to_vars(&args.path, &mut args.vars);
-    let repo = match Repository::discover(&args.path) {
-        Ok(repo) => repo,
-        Err(e) => panic!("Failed to open {}", e),
-    };
+    let workdir = repo
+        .workdir()
+        .ok_or("Bare repos not supported.".to_string())?;
+    let parent_path = workdir.join("../").canonicalize()?;
+    add_path_to_vars(config.path.strip_prefix(parent_path)?, &mut config.vars)?;
+    let (mut version, commit, tag) = get_version_from_git(&repo, &config.input, &config.vars);
+    config
+        .vars
+        .insert("previous-version".to_string(), version.to_string());
+    config
+        .vars
+        .insert("previous-tag".to_string(), tag.to_string());
+    debug!("Version: {} Commit: {} Tag: {}", version, commit, tag);
 
-    let version = get_version_from_git(&repo, &args.input_template, &args.vars);
-
-    let mut version = Version::parse(version.as_ref()).unwrap();
-
-    increment_version(&mut version, &args, &repo);
+    increment_version(&mut version, &tag, &config, &repo)?;
 
     info!("Next version: {}", version);
-    args.vars
-        .push((String::from("version"), version.to_string()));
+    config
+        .vars
+        .insert(String::from("version"), version.to_string());
+    config.vars.insert(
+        "tag".to_string(),
+        config
+            .input
+            .replace("{version}", version.to_string().as_str()),
+    );
 
-    let version = render_template(&args.output_template, &args.vars);
-
-    println!("{}", version);
+    println!("{}", render_template(&config.output, &config.vars));
+    Ok(())
 }

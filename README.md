@@ -11,12 +11,12 @@ Arguments:
   [PATH]  [default: .]
 
 Options:
-      --base-ref <BASE_REF>                [default: main]
-      --head-ref <HEAD_REF>                [default: main^]
+      --base-ref <BASE_REF>                [default: not-in-use]
+      --head-ref <HEAD_REF>                [default: HEAD]
       --input-template <INPUT_TEMPLATE>    [default: ]
       --output-template <OUTPUT_TEMPLATE>  [default: v{version}]
       --set <VARS>
-      --major-types <MAJOR_TYPES>...
+      --major-types <MAJOR_TYPES>
       --minor-types <MINOR_TYPES>...       [default: feat]
       --patch-types <PATCH_TYPES>...       [default: fix]
   -h, --help                               Print help
@@ -42,7 +42,7 @@ To get version and tag in same output, add it to template as in `--output-templa
     base-ref: ''
 
     # Git head ref
-    # default: main^
+    # default: HEAD
     head-ref: ''
 
     # Template used to detect the version

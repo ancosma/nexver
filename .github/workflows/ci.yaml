@@ -60,11 +60,10 @@ jobs:
         id: next-version
         uses: ancosma/nexver@HEAD
         with:
-          base-ref: ${{ github.event.pull_request.base.sha || github.event.after || '' }}
-          head-ref: ${{ github.event.pull_request.head.sha || github.event.before || '' }}
+          head-ref: ${{ github.event.pull_request.head.sha || 'HEAD' }}
 
   patch-version:
-    name: Patch version
+    name: Patch version ${{ needs.next-version.outputs.tag }}
     if: github.event.ref == 'refs/heads/main'
     needs: [next-version, tests]
     runs-on: ubuntu-22.04

@@ -126,7 +126,7 @@ fn get_version_from_git(repo: &Repository, template: &str, vars: &Vars) -> (Vers
             Some(cap) => {
                 let tag_version = Version::parse(&cap[1]).unwrap();
                 debug!("Checking tag {}", tag_version);
-                if tag_version > version {
+                if tag_version >= version {
                     version = tag_version;
                     found_tag = tag.to_string();
                 }
@@ -140,7 +140,6 @@ fn get_version_from_git(repo: &Repository, template: &str, vars: &Vars) -> (Vers
         oid = r.id();
     }
 
-    info!("Current version: {}", version);
     (version, oid, found_tag)
 }
 

@@ -47,7 +47,9 @@ jobs:
     runs-on: ubuntu-22.04
 
     outputs:
-      tag: ${{ steps.next-version.outputs.output }}
+      previous-tag: ${{ fromJSON(steps.next-version.outputs.output).previous-tag }}
+      tag: ${{ fromJSON(steps.next-version.outputs.output).tag }}
+      version: ${{ fromJSON(steps.next-version.outputs.output).version }}
 
     steps:
       - name: Checkout
@@ -61,10 +63,13 @@ jobs:
         with:
           head-ref: ${{ github.event.pull_request.head.sha || 'HEAD' }}
           patch-types: fix,chore(deps)
+          input-template: v{version}
+          output-template: '{"previous-tag": "{previous-tag}", "tag": "{tag}", "version": "{version}"}'
+
 
   patch-version:
     name: Patch version ${{ needs.next-version.outputs.tag }}
-    if: github.event.ref == 'refs/heads/main'
+    if: github.event.ref == 'refs/heads/main' && needs.next-version.outputs.tag != needs.next-version.outputs.previous-tag
     needs: [next-version, tests]
     runs-on: ubuntu-22.04
 
@@ -84,13 +89,14 @@ jobs:
         run: pip install toml-cli
 
       - name: Patch version
+        env:
+          VERSION: ${{ needs.next-version.outputs.version }}
         run: |
-          tag='${{ needs.next-version.outputs.tag }}'
-          toml set --toml-path Cargo.toml package.version "${tag#v}"
+          toml set --toml-path Cargo.toml package.version "${VERSION}"
 
           cargo update
 
-          sed -i -- 's|NEXVER_VERSION:.*$|NEXVER_VERSION: "'${tag#v}'"|g' action.yaml
+          sed -i -- 's|NEXVER_VERSION:.*$|NEXVER_VERSION: "'${VERSION}'"|g' action.yaml
 
           git config --global user.email "andrei@intersect.ro"
           git config --global user.name "CI"

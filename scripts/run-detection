@@ -4,10 +4,28 @@ set -eu
 
 : "${GITHUB_OUTPUT:?not defined}"
 
-export PATH="${HOME}/.local/bin:${PATH}"
 
-if [ "${NEXVER_VERSION:-}" != "" ]; then
-    WITH_VERSION="-${NEXVER_VERSION}"
+binary="nexver"
+version="${NEXVER_VERSION:-1.0.0}"
+
+arch="$(uname -m)"
+binary_path="${HOME}/.local/bin"
+if [ "${RUNNER_TOOL_CACHE:-}" != "" ]; then
+    binary_path="${RUNNER_TOOL_CACHE}/nexver/${version}/${arch}"
+fi
+
+if [ "${PATH##"${binary_path}"}" = "${PATH}" ]; then
+    export PATH="${binary_path}:${PATH}"
+fi
+
+if command -v "${binary}" > /dev/null 2>&1; then
+    current_version="$(${binary} --version | cut -d' ' -f2 -)"
+    if [ "${current_version}" != "${version}" ]; then
+        export PATH="${binary_path}:${PATH}"
+    fi
+else
+    echo "nexver binary not found. Please install it first!"
+    exit 1
 fi
 
 call_nexver() {
@@ -20,7 +38,7 @@ call_nexver() {
     test "${INPUT_TEMPLATE:-}" != "" && set -- --input-template "${INPUT_TEMPLATE}" "$@"
     test "${OUTPUT_TEMPLATE:-}" != "" && set -- --output-template "${OUTPUT_TEMPLATE}" "$@"
 
-    "nexver${WITH_VERSION:-}" "$@"
+    "${binary}" "$@"
 }
 
 output="$(call_nexver "${WORKING_DIRECTORY:-.}")"

@@ -59,20 +59,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: NexVer cache
-      uses: actions/cache@v3
-      id: cache-nexver
-      env:
-        NEXVER_VERSION: "1.1.2"
-      with:
-        path: |
-          ~/.local/bin/nexver-${{ env.NEXVER_VERSION }}
-        key: ${{ runner.os }}-nexver-${{ env.NEXVER_VERSION }}
-        restore-keys: |
-          ${{ runner.os }}-nexver-
-
     - name: Install NexVer
-      if: steps.cache-nexver.outputs.cache-hit != 'true'
       env:
         NEXVER_VERSION: "1.1.2"
       shell: bash

@@ -8,7 +8,6 @@ binary="nexver"
 
 arch="$(uname -m)"
 sys="$(uname -s | tr '[:upper:]' '[:lower:]')"
-binary_v="${binary}-${version}"
 binary_path="${HOME}/.local/bin"
 if [ "${RUNNER_TOOL_CACHE:-}" != "" ]; then
     binary_path="${RUNNER_TOOL_CACHE}/nexver/${version}/${arch}"
@@ -22,17 +21,20 @@ fi
 if command -v "${binary}" > /dev/null 2>&1; then
     current_version="$(${binary} --version | cut -d' ' -f2 -)"
     if [ "${current_version}" = "${version}" ]; then
-        echo "skipping ... ${binary} is already installed"
+        echo "skipping ... ${binary} ${version} is already installed"
         exit 0
     fi
 fi
 
 mkdir -p "${binary_path}"
 
-curl -Lo "${binary_v}.zip" "${downloads_url}v${version}/${binary}-${sys}-${arch}.zip"
-unzip -o "${binary_v}" && rm -f "${binary_v}.zip"
-mv "nexver/${binary}" "${binary_path}/${binary_v}"
-rm -r "nexver/"
-chmod ugo+x "${binary_path}/${binary_v}"
-cd "${binary_path}" && ln -sf "${binary_v}" "${binary}"
+tmp_dir="$(mktemp -d)"
+cd "${tmp_dir}"
+archive="${binary}.zip"
+curl -Lo "${archive}" "${downloads_url}v${version}/${binary}-${sys}-${arch}.zip"
+unzip -o "${archive}" && rm -f "${archive}"
+mv "${binary}" "${binary_path}/"
+cd -
+rm -r "${tmp_dir}"
+
 echo "Installed ${binary} at ${binary_path}"

@@ -24,6 +24,6 @@ cp "${target_directory}/release/${binary}" LICENSE README.md "${target_directory
 cd "${target_directory}" || exit 1
 strip "nexver/${binary}" || true
 
-zip -r "${archive}" "nexver/"
+zip -rj "${archive}" nexver/*
 
 echo "Artifact: ${target_directory}/${archive}"

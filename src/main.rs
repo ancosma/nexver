@@ -193,16 +193,33 @@ fn increment_version(
         // TODO: check if commit changes are at current specified path
         match git_conventional::Commit::parse(&message) {
             Ok(info) => {
-                if info.breaking() || config.major_types.contains(&info.type_().to_string()) {
+                let t: String;
+                if info.scope().is_some() {
+                    t = format!(
+                        "{}({}){}",
+                        info.type_(),
+                        info.scope().unwrap(),
+                        if info.breaking() { "!" } else { "" }
+                    );
+                } else {
+                    t = format!("{}{}", info.type_(), if info.breaking() { "!" } else { "" });
+                }
+                if info.breaking() || config.major_types.contains(&t) {
                     major = true;
                     info!("{} commit contains a breaking change.", git_commit.id());
                     break;
-                }
-                if config.minor_types.contains(&info.type_().to_string()) {
+                } else if config.minor_types.contains(&t) {
+                    info!("{} commit contains a minor change.", git_commit.id());
                     minor = true;
-                }
-                if config.patch_types.contains(&info.type_().to_string()) {
+                } else if config.patch_types.contains(&t) {
+                    info!("{} commit contains a patch change.", git_commit.id());
                     patch = true;
+                } else {
+                    info!(
+                        "{} commit of type {} skipped",
+                        git_commit.id(),
+                        info.type_().to_string(),
+                    );
                 }
             }
             Err(_e) => {

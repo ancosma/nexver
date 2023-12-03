@@ -6,6 +6,19 @@ version=${NEXVER_VERSION:-1.0.0}
 downloads_url=${NEXVER_DOWNLOADS_URL:-https://github.com/ancosma/nexver/releases/download/}
 binary="nexver"
 
+arch="$(uname -m)"
+sys="$(uname -s | tr '[:upper:]' '[:lower:]')"
+binary_v="${binary}-${version}"
+binary_path="${HOME}/.local/bin"
+if [ "${RUNNER_TOOL_CACHE:-}" != "" ]; then
+    binary_path="${RUNNER_TOOL_CACHE}/nexver/${version}/${arch}"
+    echo "${binary_path}" >> "${GITHUB_PATH}"
+fi
+
+if [ "${PATH##"${binary_path}"}" = "${PATH}" ]; then
+    export PATH="${binary_path}:${PATH}"
+fi
+
 if command -v "${binary}" > /dev/null 2>&1; then
     current_version="$(${binary} --version | cut -d' ' -f2 -)"
     if [ "${current_version}" = "${version}" ]; then
@@ -14,16 +27,12 @@ if command -v "${binary}" > /dev/null 2>&1; then
     fi
 fi
 
-arch="$(uname -m)"
-sys="$(uname -s | tr '[:upper:]' '[:lower:]')"
-binary_v="${binary}-${version}"
-path="$HOME/.local/bin"
-
-mkdir -p "${path}"
+mkdir -p "${binary_path}"
 
 curl -Lo "${binary_v}.zip" "${downloads_url}v${version}/${binary}-${sys}-${arch}.zip"
 unzip -o "${binary_v}" && rm -f "${binary_v}.zip"
-mv "nexver/${binary}" "${path}/${binary_v}"
+mv "nexver/${binary}" "${binary_path}/${binary_v}"
 rm -r "nexver/"
-chmod ugo+x "${path}/${binary_v}"
-cd "${path}" && ln -sf "${binary_v}" "${binary}"
+chmod ugo+x "${binary_path}/${binary_v}"
+cd "${binary_path}" && ln -sf "${binary_v}" "${binary}"
+echo "Installed ${binary} at ${binary_path}"

@@ -1,13 +1,14 @@
 #![forbid(unsafe_code)]
 
 use clap::Parser;
-use git2::{Oid, Repository};
+use git2::{DiffDelta, DiffFormat, DiffHunk, DiffLine, DiffOptions, Oid, Repository};
 use log::{debug, info, warn};
 use regex::Regex;
 use semver::Version;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
+use std::str;
 
 extern crate git_conventional;
 
@@ -165,6 +166,16 @@ fn add_path_to_vars(path: &Path, vars: &mut Vars) -> Result<(), Box<dyn Error>> 
     Ok(())
 }
 
+fn is_file_on_path(
+    _delta: DiffDelta,
+    _hunk: Option<DiffHunk>,
+    line: DiffLine,
+    path: &Path,
+) -> bool {
+    line.content()
+        .starts_with(path.to_str().unwrap().as_bytes())
+}
+
 fn increment_version(
     version: &mut Version,
     tag: &str,
@@ -175,6 +186,7 @@ fn increment_version(
     let mut minor = false;
     let mut patch = false;
 
+    let path = config.path.strip_prefix(repo.workdir().unwrap())?;
     let mut rw = repo.revwalk().expect("Failed to walk git commits.");
     let head = repo.revparse_single(&config.head).unwrap().id();
     if !tag.is_empty() {
@@ -189,8 +201,25 @@ fn increment_version(
     for commit in rw {
         count += 1;
         let git_commit = repo.find_commit(commit?)?;
+
+        let tree = git_commit.tree();
+        let prev_tree = repo
+            .revparse_single(format!("{}^", git_commit.id()).as_str())?
+            .peel(git2::ObjectType::Tree)?;
+        let mut options = DiffOptions::new();
+        let diff =
+            repo.diff_tree_to_tree(prev_tree.as_tree(), tree.ok().as_ref(), Some(&mut options))?;
+        if let Err(_) = diff.print(DiffFormat::NameOnly, |d, h, l| {
+            is_file_on_path(d, h, l, path)
+        }) {
+            info!(
+                "Commit {} contain no file changed for path {:?}",
+                git_commit.id(),
+                path
+            );
+            continue;
+        }
         let message = git_commit.message().ok_or("")?;
-        // TODO: check if commit changes are at current specified path
         match git_conventional::Commit::parse(&message) {
             Ok(info) => {
                 let t: String;
@@ -253,6 +282,7 @@ fn increment_version(
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
     let mut config: Config = Args::parse().try_into()?;
+    info!("Path: {:?}", &config.path);
     let repo = Repository::discover(&config.path)?;
 
     let workdir = repo

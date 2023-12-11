@@ -201,6 +201,9 @@ fn increment_version(
     for commit in rw {
         count += 1;
         let git_commit = repo.find_commit(commit?)?;
+        if git_commit.parent_count() == 0 {
+            break;
+        }
 
         let tree = git_commit.tree();
         let prev_tree = repo

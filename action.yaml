@@ -61,14 +61,14 @@ runs:
   steps:
     - name: Install NexVer
       env:
-        NEXVER_VERSION: "1.2.0"
+        NEXVER_VERSION: "1.2.1"
       shell: bash
       run: ${{ github.action_path }}/scripts/nexver-install
 
     - name: Run detection
       id: next-version
       env:
-        NEXVER_VERSION: "1.2.0"
+        NEXVER_VERSION: "1.2.1"
         BASE_REF: ${{ inputs.base-ref }}
         HEAD_REF: ${{ inputs.head-ref }}
         INPUT_TEMPLATE: ${{ inputs.input-template }}

@@ -166,13 +166,14 @@ fn add_path_to_vars(path: &Path, vars: &mut Vars) -> Result<(), Box<dyn Error>> 
     Ok(())
 }
 
-fn is_file_on_path(
+fn is_not_file_on_path(
     _delta: DiffDelta,
     _hunk: Option<DiffHunk>,
     line: DiffLine,
     path: &Path,
 ) -> bool {
-    line.content()
+    !line
+        .content()
         .starts_with(path.to_str().unwrap().as_bytes())
 }
 
@@ -212,8 +213,8 @@ fn increment_version(
         let mut options = DiffOptions::new();
         let diff =
             repo.diff_tree_to_tree(prev_tree.as_tree(), tree.ok().as_ref(), Some(&mut options))?;
-        if let Err(_) = diff.print(DiffFormat::NameOnly, |d, h, l| {
-            is_file_on_path(d, h, l, path)
+        if let Ok(_) = diff.print(DiffFormat::NameOnly, |d, h, l| {
+            is_not_file_on_path(d, h, l, path)
         }) {
             info!(
                 "Commit {} contain no file changed for path {:?}",

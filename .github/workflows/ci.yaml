@@ -62,9 +62,13 @@ jobs:
         uses: ancosma/nexver@HEAD
         with:
           head-ref: ${{ github.event.pull_request.head.sha || 'HEAD' }}
-          patch-types: fix,chore(deps)
+          patch-types: fix,chore(deps),chore
           input-template: v{version}
           output-template: '{"previous-tag": "{previous-tag}", "tag": "{tag}", "version": "{version}"}'
+
+      - name: Next version
+        run: |
+          printf '%s\n' ${{ steps.next-version.outputs.output }}
 
 
   patch-version:
@@ -77,22 +81,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Pip cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('.github/workflows/ci.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Setup tools
-        run: pip install toml-cli
+      - name: Install cargo-edit
+        run: |
+          cargo install cargo-edit
 
       - name: Patch version
         env:
           VERSION: ${{ needs.next-version.outputs.version }}
         run: |
-          toml set --toml-path Cargo.toml package.version "${VERSION}"
+          cargo set-version "${VERSION}"
 
           cargo update
 

@@ -1,6 +1,6 @@
 [package]
 name = "nexver"
-version = "1.2.3"
+version = "1.2.4"
 edition = "2021"
 
 repository = "https://github.com/ancosma/nexver/"
